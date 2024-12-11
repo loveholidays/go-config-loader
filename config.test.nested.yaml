@@ -1,0 +1,4 @@
+dummy_config_1:
+  nested_field_1: false
+  nested_pointer_1: "yes"
+dummy_config_2: "yep"

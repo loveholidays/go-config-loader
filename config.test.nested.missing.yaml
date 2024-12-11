@@ -1,0 +1,3 @@
+dummy_config_1:
+  nested_pointer_1: "yes"
+dummy_config_2: "yep"

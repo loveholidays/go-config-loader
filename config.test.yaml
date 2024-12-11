@@ -1,0 +1,5 @@
+inner:
+  otherNumber: 10
+  otherString: $ENV_VAR
+someNumber: 12
+someString: some
