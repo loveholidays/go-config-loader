@@ -13,26 +13,26 @@ import (
 // LoadConfiguration loads config values from the yaml file passed to it via the configPath variable. It returns a
 // struct of type configT. The values of the configT struct will be set to the values inside the yaml file. If a
 // value marked as required:"true" in the struct is not present in the yaml file, the function will return an error.
-func LoadConfiguration[configT interface{}](configPath string) (*configT, error) {
+func LoadConfiguration[configT interface{}](configPath string) (configT, error) {
 	file, err := os.ReadFile(configPath)
 
+	var config configT
 	if err != nil {
-		return nil, err
+		return config, err
 	}
 
 	expandedYaml, err := expandEnvironmentVariables(file)
 
 	if err != nil {
-		return nil, err
+		return config, err
 	}
 
-	var config configT
 	err = unmarshalAndValidate([]byte(expandedYaml), &config)
 	if err != nil {
-		return nil, err
+		return config, err
 	}
 
-	return &config, nil
+	return config, nil
 }
 
 func expandEnvironmentVariables(file []byte) (string, error) {

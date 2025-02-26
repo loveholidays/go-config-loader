@@ -47,9 +47,8 @@ var _ = Describe("Shared Config", func() {
 
 	Describe("Expanding environment variables in YAML", func() {
 		It("returns error for missing variables", func() {
-			cfg, err := config.LoadConfiguration[TestConfig]("config.test.yaml")
+			_, err := config.LoadConfiguration[TestConfig]("config.test.yaml")
 
-			Expect(cfg).To(BeNil())
 			Expect(err.Error()).To(Equal("Missing required environment variables: ENV_VAR"))
 		})
 	})
@@ -61,7 +60,7 @@ var _ = Describe("Shared Config", func() {
 			cfg, err := config.LoadConfiguration[TestConfig]("config.test.yaml")
 			Expect(err).To(BeNil())
 
-			expected := &TestConfig{
+			expected := TestConfig{
 				InnerConfig: InnerConfig{
 					OtherNumber: 10,
 					OtherString: "other",
