@@ -17,4 +17,4 @@ jobs:
           go-version: '1.24'
 
       - name: go list
-        run: GOPROXY=proxy.golang.org go list -m github.com/loveholidays/go-config-loader@v${{ github.ref_name }}
+        run: GOPROXY=proxy.golang.org go list -m github.com/loveholidays/go-config-loader@${{ github.ref_name }}
