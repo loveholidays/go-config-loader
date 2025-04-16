@@ -16,11 +16,7 @@ clean: ## Deletes binaries from the bin folder
 ##@ Tests
 test: check ## Run unit tests
 	@echo "== unit test"
-	if [ -z "$(DOCKER_RUNNING)" ]; then \
-		ginkgo ./...; \
-	else \
-		ginkgo --skip-file e2e_test.go ./...; \
-	fi
+	go test ./...
 
 ##@ Run static checks
 check: tools ## Runs lint, fmt and vet checks against the codebase

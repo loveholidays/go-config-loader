@@ -78,9 +78,6 @@ linters:
     # Suggests to use `%w` for error-wrapping.
     - errorlint
 
-    # Checks for pointers to enclosing loop variables.
-    - exportloopref
-
     # As you already know I'm a co-author. It would be strange to not use
     # one of my warmly loved projects.
     - gocritic

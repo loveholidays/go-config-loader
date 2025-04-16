@@ -2,13 +2,10 @@
 package goconfigloader_test
 
 import (
-	"fmt"
-	config "github.com/loveholidays/go-config-loader"
-	"os"
+	"reflect"
 	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	config "github.com/loveholidays/go-config-loader"
 )
 
 type TestConfig struct {
@@ -38,86 +35,103 @@ type nestedField struct {
 	NestedField2 *string `yaml:"nested_pointer_1" required:"true"`
 }
 
-func TestLoadConfiguration(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Shared Config")
+func TestExpandingEnvironmentVariablesInYAML(t *testing.T) {
+	cfg, err := config.LoadConfiguration[TestConfig]("config.test.yaml")
+
+	if cfg != nil {
+		t.Error("Expected config to be nil, but it was not")
+	}
+
+	if err == nil {
+		t.Fatal("Expected error, but got nil")
+	}
+
+	expectedErr := "Missing required environment variables: ENV_VAR"
+	if err.Error() != expectedErr {
+		t.Errorf("Expected error '%s', got '%s'", expectedErr, err.Error())
+	}
 }
 
-var _ = Describe("Shared Config", func() {
+func TestYAMLFileParsing(t *testing.T) {
+	t.Setenv("ENV_VAR", "other")
 
-	Describe("Expanding environment variables in YAML", func() {
-		It("returns error for missing variables", func() {
-			cfg, err := config.LoadConfiguration[TestConfig]("config.test.yaml")
+	cfg, err := config.LoadConfiguration[TestConfig]("config.test.yaml")
+	if err != nil {
+		t.Fatal("Expected no error, but got:", err)
+	}
 
-			Expect(cfg).To(BeNil())
-			Expect(err.Error()).To(Equal("Missing required environment variables: ENV_VAR"))
-		})
+	expected := &TestConfig{
+		InnerConfig: InnerConfig{
+			OtherNumber: 10,
+			OtherString: "other",
+		},
+		SomeNumber: 12,
+		SomeString: "some",
+	}
+
+	if !reflect.DeepEqual(cfg, expected) {
+		t.Errorf("Expected %+v, got %+v", expected, cfg)
+	}
+}
+
+func TestRequiredFields(t *testing.T) {
+	t.Run("should fail to parse config when required fields are missing", func(t *testing.T) {
+		t.Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
+
+		_, err := config.LoadConfiguration[genericConfig]("config.test.missing-field.yaml")
+		if err == nil {
+			t.Fatal("Expected error, but got nil")
+		}
+
+		expectedErr := "required field 'dummy_config_1' is missing in YAML input"
+		if err.Error() != expectedErr {
+			t.Errorf("Expected error '%s', got '%s'", expectedErr, err.Error())
+		}
 	})
 
-	Describe("YAML file parsing", func() {
-		It("unmarshalls into cfg", func() {
-			os.Clearenv()
-			_ = os.Setenv("ENV_VAR", "other")
-			cfg, err := config.LoadConfiguration[TestConfig]("config.test.yaml")
-			Expect(err).To(BeNil())
+	t.Run("should not fail when false boolean is explicitly set", func(t *testing.T) {
+		t.Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
 
-			expected := &TestConfig{
-				InnerConfig: InnerConfig{
-					OtherNumber: 10,
-					OtherString: "other",
-				},
-				SomeNumber: 12,
-				SomeString: "some",
-			}
-
-			Expect(cfg).To(Equal(expected))
-		})
-
+		_, err := config.LoadConfiguration[configWithBoolean]("config.test.bool.yaml")
+		if err != nil {
+			t.Fatalf("Expected no error, but got: %v", err)
+		}
 	})
 
-	Describe("Required fields", func() {
-		It("should fail to parse config when required fields are missing", func() {
-			os.Clearenv()
-			GinkgoT().Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
-			_, err := config.LoadConfiguration[genericConfig]("config.test.missing-field.yaml")
+	t.Run("should not fail when false boolean is explicitly set as nested field", func(t *testing.T) {
+		t.Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
 
-			Expect(err).To(HaveOccurred())
-			fmt.Printf("%s", err.Error())
-			Expect(err.Error()).To(Equal("required field 'dummy_config_1' is missing in YAML input"))
-		})
-
-		It("should not fail when false boolean is explicitly set", func() {
-			os.Clearenv()
-			GinkgoT().Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
-			_, err := config.LoadConfiguration[configWithBoolean]("config.test.bool.yaml")
-
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should not fail when false boolean is explicitly set as nested field", func() {
-			os.Clearenv()
-			GinkgoT().Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
-			_, err := config.LoadConfiguration[nestedConfig]("config.test.nested.yaml")
-
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should fail when boolean is not set as nested field", func() {
-			os.Clearenv()
-			GinkgoT().Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
-			_, err := config.LoadConfiguration[nestedConfig]("config.test.nested.missing.yaml")
-
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("required field 'dummy_config_1.nested_field_1' is missing in YAML input"))
-		})
-
-		It("should fail when pointer is not set as nested field", func() {
-			os.Clearenv()
-			GinkgoT().Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
-			_, err := config.LoadConfiguration[nestedConfig]("config.test.nested.missing-pointer.yaml")
-
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("required field 'dummy_config_1.nested_pointer_1' is missing in YAML input"))
-		})
+		_, err := config.LoadConfiguration[nestedConfig]("config.test.nested.yaml")
+		if err != nil {
+			t.Fatalf("Expected no error, but got: %v", err)
+		}
 	})
-})
+
+	t.Run("should fail when boolean is not set as nested field", func(t *testing.T) {
+		t.Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
+
+		_, err := config.LoadConfiguration[nestedConfig]("config.test.nested.missing.yaml")
+		if err == nil {
+			t.Fatal("Expected error, but got nil")
+		}
+
+		expectedErr := "required field 'dummy_config_1.nested_field_1' is missing in YAML input"
+		if err.Error() != expectedErr {
+			t.Errorf("Expected error '%s', got '%s'", expectedErr, err.Error())
+		}
+	})
+
+	t.Run("should fail when pointer is not set as nested field", func(t *testing.T) {
+		t.Setenv("DUMMY_CONFIG_2_COMES_FROM_ENV", "set from env")
+
+		_, err := config.LoadConfiguration[nestedConfig]("config.test.nested.missing-pointer.yaml")
+		if err == nil {
+			t.Fatal("Expected error, but got nil")
+		}
+
+		expectedErr := "required field 'dummy_config_1.nested_pointer_1' is missing in YAML input"
+		if err.Error() != expectedErr {
+			t.Errorf("Expected error '%s', got '%s'", expectedErr, err.Error())
+		}
+	})
+}

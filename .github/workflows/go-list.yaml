@@ -14,7 +14,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.23'
+          go-version: '1.24'
 
       - name: go list
         run: GOPROXY=proxy.golang.org go list -m github.com/loveholidays/go-config-loader@v${{ github.ref_name }}
